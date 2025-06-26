@@ -13,20 +13,18 @@ export class CustomError extends Error {
     Object.setPrototypeOf(this, CustomError.prototype);
   }
 
-  /**
-   * Get a default message based on error category
-   */
   private static getDefaultMessage(category: ErrorCategory): string {
-    const messages: Partial<Record<ErrorCategory, string>> = {
-      [ErrorCategory.NETWORK]: 'Network request failed',
-      [ErrorCategory.AUTHENTICATION]: 'Authentication failed',
-      [ErrorCategory.AUTHORIZATION]: 'Access denied',
-      [ErrorCategory.NOT_FOUND]: 'Resource not found',
-      [ErrorCategory.VALIDATION]: 'Validation failed',
-      [ErrorCategory.TIMEOUT]: 'Operation timed out',
-      [ErrorCategory.CONFIGURATION]: 'Configuration error',
-    };
+  const messages: Partial<Record<ErrorCategory, string>> = {
+    [ErrorCategory.NETWORK]: 'Network request failed',
+    [ErrorCategory.AUTHENTICATION]: 'Authentication failed',
+    [ErrorCategory.AUTHORIZATION]: 'Access denied',
+    [ErrorCategory.NOT_FOUND]: 'Resource not found',
+    [ErrorCategory.VALIDATION]: 'Validation failed',
+    [ErrorCategory.TIMEOUT]: 'Operation timed out',
+    [ErrorCategory.CONFIGURATION]: 'Configuration error',
+  };
 
-    return messages[category] || 'An error occurred';
-  }
+  return messages[category] || `An error occurred (Category: ${category})`; // More context
+}
+
 }

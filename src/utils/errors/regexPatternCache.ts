@@ -1,172 +1,6 @@
-// import { ErrorCategory } from "../../config/coreTypes/errors/error-category.enum";
-// import { ErrorPatterns } from "./errorPatterns";
-
-// // Cache for compiled regex patterns and match results
-// export const PATTERN_CACHE = new Map<string, RegExp>();
-// export const MATCH_RESULT_CACHE = new Map<string, { category: ErrorCategory; context: string }>();
-
-// // Optimized pattern groups ordered by frequency/priority
-// export const PRIORITIZED_PATTERN_GROUPS = [
-//   // Most common patterns first
-//   ErrorPatterns.TIMEOUT_PATTERNS,
-//   ErrorPatterns.ELEMENT_PATTERNS,
-//   ErrorPatterns.LOCATOR_PATTERNS,
-//   ErrorPatterns.PAGE_PATTERNS,
-//   ErrorPatterns.NETWORK_PATTERNS,
-
-//   // Browser-specific patterns
-//   ErrorPatterns.BROWSER_PATTERNS,
-//   ErrorPatterns.FRAME_PATTERNS,
-//   ErrorPatterns.IFRAME_PATTERNS,
-
-//   // Interaction patterns
-//   ErrorPatterns.SELECTOR_PATTERNS,
-//   ErrorPatterns.ELEMENT_STATE_PATTERNS,
-//   ErrorPatterns.KEYBOARD_PATTERNS,
-//   ErrorPatterns.MOUSE_PATTERNS,
-
-//   // Less frequent patterns
-//   ErrorPatterns.SCREENSHOT_PATTERNS,
-//   ErrorPatterns.DOWNLOAD_PATTERNS,
-//   ErrorPatterns.UPLOAD_PATTERNS,
-//   ErrorPatterns.COOKIE_PATTERNS,
-//   ErrorPatterns.STORAGE_PATTERNS,
-//   ErrorPatterns.DRAG_DROP_PATTERNS,
-//   ErrorPatterns.HOVER_PATTERNS,
-//   ErrorPatterns.GESTURE_PATTERNS,
-//   ErrorPatterns.WAIT_CONDITION_PATTERNS,
-//   ErrorPatterns.TAB_PATTERNS,
-//   ErrorPatterns.WINDOW_PATTERNS,
-//   ErrorPatterns.CONTEXT_PATTERNS,
-//   ErrorPatterns.SCROLL_PATTERNS,
-//   ErrorPatterns.VIEWPORT_PATTERNS,
-//   ErrorPatterns.TEXT_VERIFICATION_PATTERNS,
-//   ErrorPatterns.CONTENT_MISMATCH_PATTERNS,
-//   ErrorPatterns.DIALOG_PATTERNS,
-//   ErrorPatterns.HTTP_CLIENT_PATTERNS,
-//   ErrorPatterns.HTTP_SERVER_PATTERNS,
-//   ErrorPatterns.CORS_PATTERNS,
-//   ErrorPatterns.INTERCEPT_PATTERNS,
-//   ErrorPatterns.AUTHENTICATION_PATTERNS,
-//   ErrorPatterns.AUTHORIZATION_PATTERNS,
-//   ErrorPatterns.TOKEN_EXPIRED_PATTERNS,
-//   ErrorPatterns.CSS_PATTERNS,
-//   ErrorPatterns.STYLE_PATTERNS,
-//   ErrorPatterns.SECURITY_ERROR_PATTERNS,
-//   ErrorPatterns.MOBILE_DEVICE_PATTERNS,
-//   ErrorPatterns.TYPE_ERROR_PATTERNS,
-//   ErrorPatterns.REFERENCE_ERROR_PATTERNS,
-//   ErrorPatterns.SYNTAX_ERROR_PATTERNS,
-//   ErrorPatterns.RANGE_ERROR_PATTERNS,
-//   ErrorPatterns.FILE_NOT_FOUND_PATTERNS,
-//   ErrorPatterns.FILE_EXISTS_PATTERNS,
-//   ErrorPatterns.ACCESS_DENIED_PATTERNS,
-//   ErrorPatterns.FILE_TOO_LARGE_PATTERNS,
-//   ErrorPatterns.CONNECTION_PATTERNS,
-//   ErrorPatterns.CONFLICT_PATTERNS,
-//   ErrorPatterns.API_VERSION_ERROR_PATTERNS,
-//   ErrorPatterns.FRAME_TIMEOUT_PATTERNS,
-//   ErrorPatterns.TEST_PATTERNS,
-//   ErrorPatterns.FIXTURE_PATTERNS,
-//   ErrorPatterns.SESSION_PATTERNS,
-// ];
-
-// // Pre-compiled system error mappings
-// export const SYSTEM_ERROR_MAP = new Map([
-//   // File system errors
-//   ["ENOENT", { category: ErrorCategory.FILE_NOT_FOUND, context: "File Not Found Error" }],
-//   ["EEXIST", { category: ErrorCategory.FILE_EXISTS, context: "File Already Exists Error" }],
-//   ["EACCES", { category: ErrorCategory.ACCESS_DENIED, context: "File Access Denied Error" }],
-//   ["EFBIG", { category: ErrorCategory.FILE_TOO_LARGE, context: "File Too Large Error" }],
-
-//   // Network errors
-//   ["ECONNREFUSED", { category: ErrorCategory.CONNECTION, context: "Connection Refused Error" }],
-//   ["ECONNRESET", { category: ErrorCategory.CONNECTION, context: "Connection Reset Error" }],
-//   ["ETIMEDOUT", { category: ErrorCategory.TIMEOUT, context: "Connection Timeout Error" }],
-//   ["EHOSTUNREACH", { category: ErrorCategory.NETWORK, context: "Host Unreachable Error" }],
-//   ["ENETUNREACH", { category: ErrorCategory.NETWORK, context: "Network Unreachable Error" }],
-
-//   // Security
-//   ["EPERM", { category: ErrorCategory.SECURITY_ERROR, context: "Permission Denied Error" }],
-// ]);
-
-// // JavaScript error type mappings
-// export const JS_ERROR_MAP = new Map([
-//   ["TypeError", { category: ErrorCategory.TYPE_ERROR, context: "Type Error" }],
-//   ["ReferenceError", { category: ErrorCategory.REFERENCE_ERROR, context: "Reference Error" }],
-//   ["SyntaxError", { category: ErrorCategory.SYNTAX_ERROR, context: "Syntax Error" }],
-//   ["RangeError", { category: ErrorCategory.RANGE_ERROR, context: "Range Error" }],
-// ]);
-
-// // HTTP status code mappings
-// export const HTTP_STATUS_MAP = new Map([
-//   [401, { category: ErrorCategory.AUTHENTICATION, context: "Authentication Error (401)" }],
-//   [403, { category: ErrorCategory.AUTHORIZATION, context: "Authorization Error (403)" }],
-//   [404, { category: ErrorCategory.NOT_FOUND, context: "Not Found Error (404)" }],
-//   [409, { category: ErrorCategory.CONFLICT, context: "Conflict Error (409)" }],
-//   [429, { category: ErrorCategory.RATE_LIMIT, context: "Rate Limit Error (429)" }],
-// ]);
-
-// // Single compiled regex for ANSI escape sequences
-// export const ANSI_REGEX = /\x1b\[\d+(?:;\d+)*m|\x1b\??[0-9;]*[A-Za-z]/g;
-
-// // Message property lookup order for error objects
-// export const MESSAGE_PROPS = ["message", "error", "description", "detail"] as const;
-
-// // Cache size limits to prevent memory leaks
-// export const MAX_PATTERN_CACHE_SIZE = 100;
-// export const MAX_MATCH_CACHE_SIZE = 500;
-
-// /**
-//  * Get or compile regex pattern with caching
-//  */
-// export function getCachedPattern(patternSource: string): RegExp {
-//   if (PATTERN_CACHE.has(patternSource)) {
-//     return PATTERN_CACHE.get(patternSource)!;
-//   }
-
-//   // Prevent cache overflow
-//   if (PATTERN_CACHE.size >= MAX_PATTERN_CACHE_SIZE) {
-//     const firstKey = PATTERN_CACHE.keys().next().value;
-//     if (firstKey !== undefined) {
-//       PATTERN_CACHE.delete(firstKey);
-//     }
-//   }
-
-//   const compiledPattern = new RegExp(patternSource, "i");
-//   PATTERN_CACHE.set(patternSource, compiledPattern);
-//   return compiledPattern;
-// }
-
-// /**
-//  * Generate cache key for error message matching
-//  */
-// export function generateMatchCacheKey(errorMessage: string): string {
-//   // Use first 50 chars + length for balance of uniqueness vs collision
-//   return `${errorMessage.substring(0, 50)}_${errorMessage.length}`;
-// }
-
-// /**
-//  * Clear caches when they get too large (optional utility method)
-//  */
-// export function clearCaches(): void {
-//   PATTERN_CACHE.clear();
-//   MATCH_RESULT_CACHE.clear();
-// }
-
-// /**
-//  * Get cache statistics (for monitoring)
-//  */
-// export function getCacheStats(): { patternCacheSize: number; matchCacheSize: number } {
-//   return {
-//     patternCacheSize: PATTERN_CACHE.size,
-//     matchCacheSize: MATCH_RESULT_CACHE.size,
-//   };
-// }
-
-
 import { ErrorCategory } from "../../config/coreTypes/errors/error-category.enum";
 import { ErrorPatterns } from "./errorPatterns";
+import logger from "../logging/loggerManager";
 
 // Cache for compiled regex patterns and match results
 export const PATTERN_CACHE = new Map<string, RegExp>();
@@ -176,10 +10,6 @@ export const MATCH_RESULT_CACHE = new Map<string, { category: ErrorCategory; con
 export const MAX_PATTERN_CACHE_SIZE = 100;
 export const MAX_MATCH_CACHE_SIZE = 500;
 
-/**
- * Get or compile regex pattern with caching - CRITICAL PATH METHOD
- * Used for every pattern matching operation
- */
 export function getCachedPattern(patternSource: string): RegExp {
   if (PATTERN_CACHE.has(patternSource)) {
     return PATTERN_CACHE.get(patternSource)!;
@@ -189,6 +19,7 @@ export function getCachedPattern(patternSource: string): RegExp {
   if (PATTERN_CACHE.size >= MAX_PATTERN_CACHE_SIZE) {
     const firstKey = PATTERN_CACHE.keys().next().value;
     if (firstKey !== undefined) {
+      logger.info(`Cache overflow: removing pattern ${firstKey}`);
       PATTERN_CACHE.delete(firstKey);
     }
   }
@@ -197,6 +28,7 @@ export function getCachedPattern(patternSource: string): RegExp {
   PATTERN_CACHE.set(patternSource, compiledPattern);
   return compiledPattern;
 }
+
 
 /**
  * Generate cache key for error message matching - HIGH FREQUENCY METHOD
