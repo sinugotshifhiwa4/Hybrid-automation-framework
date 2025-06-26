@@ -78,11 +78,11 @@ export class AxiosHttpClient {
   }
 
   // Public HTTP method implementations
-  async get<T>(endpoint: string, authorization?: string): Promise<AxiosResponse<T>> {
+  public async get<T>(endpoint: string, authorization?: string): Promise<AxiosResponse<T>> {
     return this.sendRequest<T>("get", endpoint, undefined, authorization);
   }
 
-  async post<T>(
+  public async post<T>(
     endpoint: string,
     payload?: unknown,
     authorization?: string,
@@ -90,7 +90,7 @@ export class AxiosHttpClient {
     return this.sendRequest<T>("post", endpoint, payload, authorization);
   }
 
-  async put<T>(
+  public async put<T>(
     endpoint: string,
     payload?: unknown,
     authorization?: string,
@@ -98,7 +98,7 @@ export class AxiosHttpClient {
     return this.sendRequest<T>("put", endpoint, payload, authorization);
   }
 
-  async patch<T>(
+  public async patch<T>(
     endpoint: string,
     payload?: unknown,
     authorization?: string,
@@ -106,7 +106,7 @@ export class AxiosHttpClient {
     return this.sendRequest<T>("patch", endpoint, payload, authorization);
   }
 
-  async delete<T>(endpoint: string, authorization?: string): Promise<AxiosResponse<T>> {
+  public async delete<T>(endpoint: string, authorization?: string): Promise<AxiosResponse<T>> {
     return this.sendRequest<T>("delete", endpoint, undefined, authorization);
   }
 
