@@ -1,7 +1,7 @@
 import { ErrorCategory } from '../../config/coreTypes/errors/error-category.enum';
 import { ErrorDetails } from '../../config/coreTypes/errors/error-handler.types';
 import logger from '../logging/loggerManager';
-import ErrorProcessor from './errorProcessor';
+import ErrorProcessor from './errorProcessor1';
 
 export default class ErrorHandler {
   private static loggedErrors = new Set<string>();
