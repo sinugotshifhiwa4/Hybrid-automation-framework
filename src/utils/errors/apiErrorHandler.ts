@@ -13,7 +13,7 @@ export default class ApiErrorHandler {
   /**
    * Enhanced API error capture with better error extraction
    */
-  public static captureApiError(
+  public static captureError(
     error: unknown,
     source: string,
     context?: string,
@@ -327,7 +327,7 @@ export default class ApiErrorHandler {
         `Expected failure handled correctly in negative test [${methodName}] — Status: ${statusCode}`,
       );
     } else {
-      this.captureApiError(
+      this.captureError(
         error,
         methodName,
         `Unexpected error occurred in negative test for ${methodName}`,
