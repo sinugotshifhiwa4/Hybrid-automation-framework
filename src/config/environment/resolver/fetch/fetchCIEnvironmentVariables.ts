@@ -1,6 +1,6 @@
 import { CIEnvironmentConfig } from '../../../coreTypes/configTypes/ci-environment.types';
 import { EnvironmentUtils } from '../environmentUtils';
-import SanitizationConfig from '../../../../utils/sanitization/sanitizationConfig';
+import DataSanitizer from '../../../../utils/sanitization/dataSanitizer';
 import { Credentials } from '../../../coreTypes/auth/credentials.types';
 
 export class FetchCIEnvironmentVariables {
@@ -72,8 +72,8 @@ export class FetchCIEnvironmentVariables {
       password: this.ciEnvironmentVariables.users.admin.password,
     });
     return {
-      username: SanitizationConfig.sanitizeString(this.ciEnvironmentVariables.users.admin.username),
-      password: SanitizationConfig.sanitizeString(this.ciEnvironmentVariables.users.admin.password),
+      username: DataSanitizer.sanitizeString(this.ciEnvironmentVariables.users.admin.username),
+      password: DataSanitizer.sanitizeString(this.ciEnvironmentVariables.users.admin.password),
     };
   }
 
@@ -83,10 +83,10 @@ export class FetchCIEnvironmentVariables {
       password: this.ciEnvironmentVariables.users.portal.password,
     });
     return {
-      username: SanitizationConfig.sanitizeString(
+      username: DataSanitizer.sanitizeString(
         this.ciEnvironmentVariables.users.portal.username,
       ),
-      password: SanitizationConfig.sanitizeString(
+      password: DataSanitizer.sanitizeString(
         this.ciEnvironmentVariables.users.portal.password,
       ),
     };
@@ -100,10 +100,10 @@ export class FetchCIEnvironmentVariables {
       password: this.ciEnvironmentVariables.users.database.password,
     });
     return {
-      username: SanitizationConfig.sanitizeString(
+      username: DataSanitizer.sanitizeString(
         this.ciEnvironmentVariables.users.database.username,
       ),
-      password: SanitizationConfig.sanitizeString(
+      password: DataSanitizer.sanitizeString(
         this.ciEnvironmentVariables.users.database.password,
       ),
     };

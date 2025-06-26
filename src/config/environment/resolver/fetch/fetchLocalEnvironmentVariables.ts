@@ -1,7 +1,6 @@
 import { EnvironmentUtils } from '../environmentUtils';
 import ENV from '../../variables/variables';
 import { Credentials } from '../../../coreTypes/auth/credentials.types';
-import { EnvironmentStage } from '../../dotenv/types';
 
 export class FetchLocalEnvironmentVariables {
   // Urls
@@ -32,7 +31,6 @@ export class FetchLocalEnvironmentVariables {
    * @param shouldDecrypt - Whether to decrypt the credentials. Defaults to true
    */
   public async getAdminCredentials(
-    environmentForSecretKeyVariable: EnvironmentStage,
     shouldDecrypt: boolean = true,
   ): Promise<Credentials> {
     EnvironmentUtils.verifyCredentials({
@@ -44,7 +42,7 @@ export class FetchLocalEnvironmentVariables {
       return EnvironmentUtils.decryptCredentials(
         ENV.ADMIN_USERNAME,
         ENV.ADMIN_PASSWORD,
-        EnvironmentUtils.getSecretKeyForEnvironment(environmentForSecretKeyVariable),
+        EnvironmentUtils.getSecretKeyForCurrentEnvironment(),
       );
     } else {
       return {
@@ -60,7 +58,6 @@ export class FetchLocalEnvironmentVariables {
    * @param shouldDecrypt - Whether to decrypt the credentials. Defaults to true
    */
   public async getPortalCredentials(
-    environmentForSecretKeyVariable: EnvironmentStage,
     shouldDecrypt: boolean = true,
   ): Promise<Credentials> {
     EnvironmentUtils.verifyCredentials({
@@ -72,7 +69,7 @@ export class FetchLocalEnvironmentVariables {
       return EnvironmentUtils.decryptCredentials(
         ENV.PORTAL_USERNAME,
         ENV.PORTAL_PASSWORD,
-        EnvironmentUtils.getSecretKeyForEnvironment(environmentForSecretKeyVariable),
+     EnvironmentUtils.getSecretKeyForCurrentEnvironment(),
       );
     } else {
       return {
@@ -89,7 +86,6 @@ export class FetchLocalEnvironmentVariables {
    * @param shouldDecrypt - Whether to decrypt the credentials. Defaults to true
    */
   public async getDatabaseCredentials(
-    environmentForSecretKeyVariable: EnvironmentStage,
     shouldDecrypt: boolean = true,
   ): Promise<Credentials> {
     EnvironmentUtils.verifyCredentials({
@@ -101,7 +97,7 @@ export class FetchLocalEnvironmentVariables {
       return EnvironmentUtils.decryptCredentials(
         ENV.DB_USERNAME,
         ENV.DB_PASSWORD,
-        EnvironmentUtils.getSecretKeyForEnvironment(environmentForSecretKeyVariable),
+     EnvironmentUtils.getSecretKeyForCurrentEnvironment(),
       );
     } else {
       return {
