@@ -7,22 +7,39 @@ import {
   PlaywrightMatcherResult,
   ErrorPatternGroup,
 } from "../../config/coreTypes/errors/error-handler.types";
+import {
+  PRIORITIZED_PATTERN_GROUPS,
+  SYSTEM_ERROR_MAP,
+  ANSI_REGEX,
+  MESSAGE_PROPS,
+  JS_ERROR_MAP,
+  HTTP_STATUS_MAP,
+  generateMatchCacheKey,
+  getCachedPattern,
+  MAX_MATCH_CACHE_SIZE,
+  MATCH_RESULT_CACHE,
+} from "./regexPatternCache";
 
+/**
+ * ErrorProcessor - Centralized error processing utility
+ *
+ * This class provides methods for creating standardized error details,
+ * sanitizing error messages, and categorizing errors based on their type.
+ */
 export default class ErrorProcessor {
+  private static DEFAULT_ERROR_MESSAGE = "An unexpected error occurred";
+
   /**
    * Create a standardized error object with source, context, message, and category.
-   * HTTP details are added if the error is an Axios error.
-   * @param error - The error object to process.
-   * @param source - The source of the error.
-   * @param context - The context of the error (optional).
-   * @returns A structured error object with source, context, message, and category.
+   * @param error - The error to process
+   * @param source - The source of the error (e.g., function name)
+   * @param context - Optional additional context for the error
+   * @returns An object containing structured error details
    */
   public static createErrorDetails(error: unknown, source: string, context?: string): ErrorDetails {
-    // Analyze the error to get category and context
     const analysis = this.categorizeError(error);
 
-    // Base error details
-    const details: ErrorDetails = {
+    return {
       source,
       context: context || analysis.context,
       message: this.getErrorMessage(error),
@@ -31,37 +48,22 @@ export default class ErrorProcessor {
       environment: process.env.ENV || "dev",
       version: process.env.APP_VERSION,
     };
-
-    return details;
   }
 
   /**
-   * Clean any error message by stripping ANSI sequences and keeping only first line
+   * Optimized error message sanitization
    */
   public static sanitizeErrorMessage(message: string): string {
     if (!message) return "";
 
-    // First sanitize the string using SanitizationConfig
-    let cleaned = DataSanitizer.sanitizeString(message);
+    // Single pass sanitization
+    const cleaned = DataSanitizer.sanitizeString(message)
+      .replace(ANSI_REGEX, "")
+      .replace(/^'Error: |^'|'$/g, "");
 
-    // Strip ANSI escape sequences
-    // Using the decimal code for ESC (27) in a character class
-    const ESC = String.fromCharCode(27);
-    cleaned = cleaned.replace(
-      new RegExp(ESC + "\\[\\d+(?:;\\d+)*m|" + ESC + "\\??[0-9;]*[A-Za-z]", "g"),
-      "",
-    );
-
-    // Strip error prefix and quotes
-    cleaned = cleaned.replace(/^'Error: |^'|'$/g, "");
-
-    // Only keep first line (common pattern in stacktraces)
     return cleaned.split("\n")[0];
   }
 
-  /**
-   * Get the error message from any error type
-   */
   public static getErrorMessage(error: unknown): string {
     if (error instanceof Error) {
       return this.sanitizeErrorMessage(error.message);
@@ -71,46 +73,98 @@ export default class ErrorProcessor {
       return this.sanitizeErrorMessage(error);
     }
 
-    // Handle error-like objects
     if (error && typeof error === "object") {
       const errorObj = error as Record<string, unknown>;
 
-      // Try different message properties
-      const messageProps = ["message", "error", "description", "detail"];
-      for (const prop of messageProps) {
-        if (typeof errorObj[prop] === "string") {
-          return this.sanitizeErrorMessage(errorObj[prop]);
+      // Fast property lookup
+      for (const prop of MESSAGE_PROPS) {
+        const value = errorObj[prop];
+        if (typeof value === "string" && value.trim()) {
+          return this.sanitizeErrorMessage(value);
         }
       }
 
-      // Try to stringify if it looks like an error object
+      // Fallback for error-like objects with more context
       if ("name" in errorObj || "code" in errorObj) {
-        return this.sanitizeErrorMessage(JSON.stringify(errorObj));
+        const contextParts: string[] = [];
+
+        if ("name" in errorObj && typeof errorObj.name === "string") {
+          contextParts.push(`name: ${errorObj.name}`);
+        }
+
+        if (
+          "code" in errorObj &&
+          (typeof errorObj.code === "string" || typeof errorObj.code === "number")
+        ) {
+          contextParts.push(`code: ${errorObj.code}`);
+        }
+
+        if ("status" in errorObj && typeof errorObj.status === "number") {
+          contextParts.push(`status: ${errorObj.status}`);
+        }
+
+        if ("statusCode" in errorObj && typeof errorObj.statusCode === "number") {
+          contextParts.push(`statusCode: ${errorObj.statusCode}`);
+        }
+
+        if (contextParts.length > 0) {
+          return this.sanitizeErrorMessage(`Error object (${contextParts.join(", ")})`);
+        }
+
+        // Safe JSON stringify with error handling
+        try {
+          return this.sanitizeErrorMessage(JSON.stringify(errorObj));
+        } catch {
+          return this.sanitizeErrorMessage("[Object with circular references]");
+        }
+      }
+
+      // Try to extract any meaningful string representation
+      try {
+        const stringifiedObj = JSON.stringify(errorObj);
+        if (stringifiedObj && stringifiedObj !== "{}") {
+          return this.sanitizeErrorMessage(`Object error: ${stringifiedObj}`);
+        }
+      } catch {
+        return this.sanitizeErrorMessage("[Object with circular references]");
       }
     }
 
-    return "Unknown error occurred";
+    // Enhanced fallback with type information
+    const errorType = error === null ? "null" : typeof error;
+    const errorValue =
+      error === undefined
+        ? "undefined"
+        : error === null
+          ? "null"
+          : typeof error === "boolean"
+            ? error.toString()
+            : typeof error === "number"
+              ? error.toString()
+              : typeof error === "symbol"
+                ? error.toString()
+                : typeof error === "function"
+                  ? "[Function]"
+                  : "[Unknown]";
+
+    return `Unknown error occurred (type: ${errorType}, value: ${errorValue})`;
   }
 
   /**
-   * Create a cache key for error deduplication
+   * Generate cache key for error deduplication
    */
   public static generateErrorCacheKey(details: ErrorDetails): string {
-    return `${details.source}_${details.category}_${
-      details.statusCode || "0"
-    }_${details.message.substring(0, 30)}`;
+    return `${details.source}_${details.category}_${details.statusCode || "0"}_${details.message.substring(0, 30)}`;
   }
 
   /**
-   * Extract additional details from error objects
+   * Extract additional error details with optimized type checking
    */
   public static extractAdditionalErrorDetails(error: unknown): Record<string, unknown> {
-    // Handle Playwright matcher results
     if (this.isPlaywrightError(error)) {
       return this.extractPlaywrightDetails(error);
     }
 
-    // Handle general objects
     if (typeof error === "object" && error !== null) {
       return this.sanitizeErrorObject(error as Record<string, unknown>);
     }
@@ -119,12 +173,11 @@ export default class ErrorProcessor {
   }
 
   /**
-   * Sanitize object for safe logging, using SanitizationConfig
+   * Optimized object sanitization
    */
   public static sanitizeErrorObject(obj: Record<string, unknown>): Record<string, unknown> {
     if (!obj) return {};
 
-    // Define custom sanitization parameters
     const customSanitizationParams = {
       ...DataSanitizer.getDefaultParams(),
       skipProperties: ["stack"],
@@ -132,181 +185,18 @@ export default class ErrorProcessor {
       maxStringLength: 1000,
     };
 
-    // Use a single sanitization call
     return DataSanitizer.sanitizeData(obj, customSanitizationParams);
   }
 
-  // PRIVATE HELPER METHODS BELOW
-
-  private static categorizeError(error: unknown): { category: ErrorCategory; context: string } {
-    // Check for native JavaScript errors first (common in browser automation)
-    const jsErrorResult = this.analyzeJavaScriptError(error);
-    if (jsErrorResult.category !== ErrorCategory.UNKNOWN) {
-      return jsErrorResult;
-    }
-
-    // Check for Playwright-specific errors (highest priority for UI automation)
-    if (this.isPlaywrightError(error)) {
-      return this.analyzePlaywrightError(error);
-    }
-
-    // Check for browser-specific errors
-    const browserErrorResult = this.analyzeBrowserError(error);
-    if (browserErrorResult.category !== ErrorCategory.UNKNOWN) {
-      return browserErrorResult;
-    }
-
-    // Check for HTTP/API errors (important for API testing)
-    const httpErrorResult = this.analyzeHttpError(error);
-    if (httpErrorResult.category !== ErrorCategory.UNKNOWN) {
-      return httpErrorResult;
-    }
-
-    // Check for system errors with codes
-    if (error instanceof Error && "code" in error) {
-      const systemResult = this.analyzeSystemError(error as Error & { code?: string | undefined });
-      if (systemResult) return systemResult;
-    }
-
-    // Check for timeout patterns (critical in UI automation)
-    if (this.isTimeoutError(error)) {
-      return {
-        category: ErrorCategory.TIMEOUT,
-        context: "Timeout Error",
-      };
-    }
-
-    // Handle CustomError/AppError
-    if (error instanceof CustomError) {
-      return this.analyzeAppError(error);
-    }
-
-    // Analyze error message for patterns
-    const messageAnalysisResult = this.analyzeErrorMessage(error);
-    if (messageAnalysisResult.category !== ErrorCategory.UNKNOWN) {
-      return messageAnalysisResult;
-    }
-
-    // Default fallback with error name if available
-    const result = {
-      category: ErrorCategory.UNKNOWN,
-      context: "General Error",
-    };
-
-    if (error instanceof Error && error.name) {
-      result.context = `${error.name} Error`;
-    }
-
-    return result;
-  }
+  // PRIVATE HELPER METHODS
 
   private static analyzePlaywrightError(
     error: Error & { matcherResult?: PlaywrightMatcherResult },
   ): { category: ErrorCategory; context: string } {
     const errorMessage = error.message.toLowerCase();
 
-    // Define pattern groups in priority order for Playwright-specific analysis
-    const patternGroups = [
-      // High priority patterns
-      ErrorPatterns.SCREENSHOT_PATTERNS,
-      ErrorPatterns.DOWNLOAD_PATTERNS,
-      ErrorPatterns.UPLOAD_PATTERNS,
-      ErrorPatterns.COOKIE_PATTERNS,
-      ErrorPatterns.STORAGE_PATTERNS,
-
-      // Navigation and page errors
-      ErrorPatterns.PAGE_PATTERNS,
-
-      // Frame-related errors (check iframe before generic frame)
-      ErrorPatterns.IFRAME_PATTERNS,
-      ErrorPatterns.FRAME_TIMEOUT_PATTERNS,
-      ErrorPatterns.FRAME_PATTERNS,
-
-      // Interaction errors
-      ErrorPatterns.KEYBOARD_PATTERNS,
-      ErrorPatterns.MOUSE_PATTERNS,
-      ErrorPatterns.DRAG_DROP_PATTERNS,
-      ErrorPatterns.HOVER_PATTERNS,
-      ErrorPatterns.GESTURE_PATTERNS,
-
-      // Element and locator errors
-      ErrorPatterns.LOCATOR_PATTERNS,
-      ErrorPatterns.SELECTOR_PATTERNS,
-      ErrorPatterns.ELEMENT_PATTERNS,
-      ErrorPatterns.ELEMENT_STATE_PATTERNS,
-
-      // Wait and state conditions
-      ErrorPatterns.WAIT_CONDITION_PATTERNS,
-
-      // Tab and window management
-      ErrorPatterns.TAB_PATTERNS,
-      ErrorPatterns.WINDOW_PATTERNS,
-      ErrorPatterns.CONTEXT_PATTERNS,
-
-      // Viewport and scrolling
-      ErrorPatterns.SCROLL_PATTERNS,
-      ErrorPatterns.VIEWPORT_PATTERNS,
-
-      // Text and content verification
-      ErrorPatterns.TEXT_VERIFICATION_PATTERNS,
-      ErrorPatterns.CONTENT_MISMATCH_PATTERNS,
-
-      // Dialog handling
-      ErrorPatterns.DIALOG_PATTERNS,
-
-      // Network and API
-      ErrorPatterns.NETWORK_PATTERNS,
-      ErrorPatterns.HTTP_CLIENT_PATTERNS,
-      ErrorPatterns.HTTP_SERVER_PATTERNS,
-      ErrorPatterns.CORS_PATTERNS,
-      ErrorPatterns.INTERCEPT_PATTERNS,
-
-      // Authentication and authorization
-      ErrorPatterns.AUTHENTICATION_PATTERNS,
-      ErrorPatterns.AUTHORIZATION_PATTERNS,
-      ErrorPatterns.TOKEN_EXPIRED_PATTERNS,
-
-      // CSS and styling
-      ErrorPatterns.CSS_PATTERNS,
-      ErrorPatterns.STYLE_PATTERNS,
-
-      // Security
-      ErrorPatterns.SECURITY_ERROR_PATTERNS,
-
-      // Mobile specific
-      ErrorPatterns.MOBILE_DEVICE_PATTERNS,
-
-      // JavaScript errors
-      ErrorPatterns.TYPE_ERROR_PATTERNS,
-      ErrorPatterns.REFERENCE_ERROR_PATTERNS,
-      ErrorPatterns.SYNTAX_ERROR_PATTERNS,
-      ErrorPatterns.RANGE_ERROR_PATTERNS,
-
-      // File system errors
-      ErrorPatterns.FILE_NOT_FOUND_PATTERNS,
-      ErrorPatterns.FILE_EXISTS_PATTERNS,
-      ErrorPatterns.ACCESS_DENIED_PATTERNS,
-      ErrorPatterns.FILE_TOO_LARGE_PATTERNS,
-
-      // Connection errors
-      ErrorPatterns.CONNECTION_PATTERNS,
-
-      // Conflict and resource errors
-      ErrorPatterns.CONFLICT_PATTERNS,
-
-      // API version errors
-      ErrorPatterns.API_VERSION_ERROR_PATTERNS,
-
-      // Generic timeout (lower priority)
-      ErrorPatterns.TIMEOUT_PATTERNS,
-
-      // Test and fixture errors (lowest priority)
-      ErrorPatterns.TEST_PATTERNS,
-      ErrorPatterns.FIXTURE_PATTERNS,
-    ];
-
-    // Check each pattern group in priority order
-    for (const patternGroup of patternGroups) {
+    // Fast pattern matching using prioritized groups
+    for (const patternGroup of PRIORITIZED_PATTERN_GROUPS) {
       if (this.matchesPatternGroup(errorMessage, error, patternGroup)) {
         return {
           category: patternGroup.category as ErrorCategory,
@@ -315,111 +205,118 @@ export default class ErrorProcessor {
       }
     }
 
-    // Fallback for unmatched Playwright errors
     return {
       category: ErrorCategory.TEST,
       context: `Playwright Test Error: ${error.matcherResult?.name || "Unknown"}`,
     };
   }
 
-  /**
-   * Check if error message matches any pattern in the given pattern group
-   */
   private static matchesPatternGroup(
     errorMessage: string,
     error: Error & { matcherResult?: PlaywrightMatcherResult },
     patternGroup: ErrorPatternGroup,
   ): boolean {
-    // Check error message against all patterns in the group
+    // Check match result cache first
+    const cacheKey = generateMatchCacheKey(errorMessage);
+    if (MATCH_RESULT_CACHE.has(cacheKey)) {
+      const cachedResult = MATCH_RESULT_CACHE.get(cacheKey)!;
+      return cachedResult.category === patternGroup.category;
+    }
+
+    // Test patterns against error message with cached compilation
     for (const pattern of patternGroup.patterns) {
-      if (pattern.test(errorMessage)) {
+      const patternSource = pattern.source;
+      const cachedPattern = getCachedPattern(patternSource);
+
+      if (cachedPattern.test(errorMessage)) {
+        // Cache the successful match
+        if (MATCH_RESULT_CACHE.size >= MAX_MATCH_CACHE_SIZE) {
+          const firstKey = MATCH_RESULT_CACHE.keys().next().value;
+          if (firstKey !== undefined) {
+            MATCH_RESULT_CACHE.delete(firstKey);
+          }
+        }
+
+        MATCH_RESULT_CACHE.set(cacheKey, {
+          category: patternGroup.category as ErrorCategory,
+          context: patternGroup.context,
+        });
+
         return true;
       }
     }
 
-    // Special case: Check matcherResult for specific patterns
-    if (error.matcherResult?.name) {
-      const matcherName = error.matcherResult.name.toLowerCase();
-
-      // Check if any pattern would match the matcher name
-      for (const pattern of patternGroup.patterns) {
-        if (pattern.test(matcherName)) {
-          return true;
-        }
-      }
-
-      // Specific matcher name checks for common cases
+    // Special case for matcherResult (unchanged)
+    const matcherName = error.matcherResult?.name?.toLowerCase();
+    if (matcherName) {
       if (patternGroup.category === "SCREENSHOT_ERROR" && matcherName.includes("screenshot")) {
         return true;
+      }
+
+      for (const pattern of patternGroup.patterns) {
+        const cachedPattern = getCachedPattern(pattern.source);
+        if (cachedPattern.test(matcherName)) {
+          return true;
+        }
       }
     }
 
     return false;
   }
 
-  /**
-   * Analyze Node.js system errors
-   */
   private static analyzeSystemError(
-    error: Error & { code?: string | undefined },
+    error: Error & { code?: string },
   ): { category: ErrorCategory; context: string } | null {
     if (!error.code) return null;
-
-    const systemCategory = this.mapSystemErrorToCategory(error);
-    if (systemCategory) {
-      return {
-        category: systemCategory,
-        context: this.mapSystemErrorToContext(error),
-      };
-    }
-
-    return null;
+    return SYSTEM_ERROR_MAP.get(error.code) || null;
   }
 
-  /**
-   * Check if an error is a timeout error based on its message
-   */
   private static isTimeoutError(error: unknown): boolean {
     const errorMessage = this.getErrorMessage(error);
 
-    return ErrorPatterns.TIMEOUT_PATTERNS.patterns.some((pattern) => pattern.test(errorMessage));
-  }
-
-  /**
-   * Analyze AppError instances
-   */
-  private static analyzeAppError(error: CustomError): { category: ErrorCategory; context: string } {
-    return {
-      category:
-        error.category in ErrorCategory ? (error.category as ErrorCategory) : ErrorCategory.UNKNOWN,
-      context: `App Error: ${(error.category as string) || "Unknown"}`,
-    };
-  }
-
-  /**
-   * Analyze error messages for patterns that indicate specific categories
-   */
-  private static analyzeErrorMessage(error: unknown): { category: ErrorCategory; context: string } {
-    const result = {
-      category: ErrorCategory.UNKNOWN,
-      context: "General Error",
-    };
-
-    const errorMessage =
-      typeof error === "string"
-        ? error.toLowerCase()
-        : error instanceof Error
-          ? error.message.toLowerCase()
-          : String(error).toLowerCase();
-
-    // Check against our category-keyword map
-    const categoryMatch = this.extractCategoryFromMessage(errorMessage);
-    if (categoryMatch) {
-      result.category = categoryMatch.category;
-      result.context = categoryMatch.context;
+    // Use cached pattern matching instead of direct pattern access
+    for (const pattern of ErrorPatterns.TIMEOUT_PATTERNS.patterns) {
+      const cachedPattern = getCachedPattern(pattern.source);
+      if (cachedPattern.test(errorMessage)) {
+        return true;
+      }
     }
+    return false;
+  }
 
-    return result;
+  private static isPlaywrightError(
+    error: unknown,
+  ): error is Error & { matcherResult?: PlaywrightMatcherResult } {
+    if (!(error instanceof Error)) return false;
+
+    return !!(
+      "matcherResult" in error ||
+      error.message.toLowerCase().includes("playwright") ||
+      error.message.toLowerCase().includes("locator") ||
+      error.message.toLowerCase().includes("page.") ||
+      error.message.toLowerCase().includes("expect(") ||
+      error.stack?.toLowerCase().includes("playwright")
+    );
+  }
+
+  private static extractPlaywrightDetails(
+    error: Error & { matcherResult?: PlaywrightMatcherResult },
+  ): Record<string, unknown> {
+    const matcher = error.matcherResult;
+    if (!matcher) return {};
+
+    return {
+      name: matcher.name,
+      pass: matcher.pass,
+      expected: matcher.expected,
+      actual: matcher.actual,
+      message: matcher.message ? this.sanitizeErrorMessage(matcher.message) : undefined,
+      log: Array.isArray(matcher.log)
+        ? matcher.log
+            .filter((entry) => !entry.includes("http"))
+            .map((entry) => this.sanitizeErrorMessage(entry))
+        : undefined,
+    };
   }
 
   private static extractCategoryFromMessage(
@@ -518,231 +415,12 @@ export default class ErrorProcessor {
     return null;
   }
 
-  private static mapSystemErrorToCategory(error: Error & { code?: string }): ErrorCategory | null {
-    if (!error.code) return null;
-
-    const codeMap: Record<string, ErrorCategory> = {
-      // File system errors (important for screenshots, downloads, reports)
-      ENOENT: ErrorCategory.FILE_NOT_FOUND,
-      EEXIST: ErrorCategory.FILE_EXISTS,
-      EACCES: ErrorCategory.ACCESS_DENIED,
-      EFBIG: ErrorCategory.FILE_TOO_LARGE,
-
-      // Network error codes (for API testing)
-      ECONNREFUSED: ErrorCategory.CONNECTION,
-      ECONNRESET: ErrorCategory.CONNECTION,
-      ETIMEDOUT: ErrorCategory.TIMEOUT,
-      EHOSTUNREACH: ErrorCategory.NETWORK,
-      ENETUNREACH: ErrorCategory.NETWORK,
-
-      // Permission and security
-      EPERM: ErrorCategory.SECURITY_ERROR,
-    };
-
-    return codeMap[error.code] || null;
-  }
-
-  private static mapSystemErrorToContext(error: Error & { code?: string }): string {
-    if (!error.code) return "System Error";
-
-    const contextMap: Record<string, string> = {
-      ENOENT: "File Not Found Error",
-      EEXIST: "File Already Exists Error",
-      EACCES: "File Access Denied Error",
-      EFBIG: "File Too Large Error",
-      ECONNREFUSED: "Connection Refused Error",
-      ECONNRESET: "Connection Reset Error",
-      ETIMEDOUT: "Connection Timeout Error",
-      EHOSTUNREACH: "Host Unreachable Error",
-      ENETUNREACH: "Network Unreachable Error",
-      EPERM: "Permission Denied Error",
-    };
-
-    return contextMap[error.code] || "System Error";
-  }
-
-  private static isPlaywrightError(error: unknown): error is Error & {
-    matcherResult?: PlaywrightMatcherResult;
-  } {
-    if (!(error instanceof Error)) return false;
-
-    // Check for Playwright-specific properties or error patterns
-    return (
-      "matcherResult" in error ||
-      error.message.toLowerCase().includes("playwright") ||
-      error.message.toLowerCase().includes("locator") ||
-      error.message.toLowerCase().includes("page.") ||
-      error.message.toLowerCase().includes("expect(") ||
-      error.stack?.toLowerCase().includes("playwright") ||
-      false
-    );
-  }
-
-  /**
-   * Extract details from Playwright errors
-   */
-  private static extractPlaywrightDetails(
-    error: Error & { matcherResult?: PlaywrightMatcherResult },
-  ): Record<string, unknown> {
-    const matcher = error.matcherResult;
-
-    if (!matcher) {
-      return {};
-    }
-
-    return {
-      name: matcher.name,
-      pass: matcher.pass,
-      expected: matcher.expected,
-      actual: matcher.actual,
-      message: matcher.message ? this.sanitizeErrorMessage(matcher.message) : undefined,
-      log: Array.isArray(matcher.log)
-        ? matcher.log
-            .filter((entry) => !entry.includes("http"))
-            .map((entry) => this.sanitizeErrorMessage(entry))
-        : undefined,
-    };
-  }
-
-  /**
-   * Analyze JavaScript native errors
-   */
-  private static analyzeJavaScriptError(error: unknown): {
-    category: ErrorCategory;
-    context: string;
-  } {
-    if (!(error instanceof Error)) {
-      return { category: ErrorCategory.UNKNOWN, context: "General Error" };
-    }
-
-    // Map JavaScript error types to categories
-    const jsErrorMap: Record<string, { category: ErrorCategory; context: string }> = {
-      TypeError: { category: ErrorCategory.TYPE_ERROR, context: "Type Error" },
-      ReferenceError: { category: ErrorCategory.REFERENCE_ERROR, context: "Reference Error" },
-      SyntaxError: { category: ErrorCategory.SYNTAX_ERROR, context: "Syntax Error" },
-      RangeError: { category: ErrorCategory.RANGE_ERROR, context: "Range Error" },
-    };
-
-    const errorMapping = jsErrorMap[error.name];
-    if (errorMapping) {
-      return errorMapping;
-    }
-
-    return { category: ErrorCategory.UNKNOWN, context: "General Error" };
-  }
-
   private static analyzeBrowserError(error: unknown): { category: ErrorCategory; context: string } {
     const errorMessage = this.getErrorMessage(error).toLowerCase();
     const errorObj = error as Error & { matcherResult?: PlaywrightMatcherResult };
 
-    // Define pattern groups in priority order for browser-specific analysis
-    const patternGroups = [
-      // High priority browser-specific patterns
-      ErrorPatterns.BROWSER_PATTERNS,
-      ErrorPatterns.PAGE_PATTERNS,
-
-      // Frame-related errors (check iframe before generic frame)
-      ErrorPatterns.IFRAME_PATTERNS,
-      ErrorPatterns.FRAME_TIMEOUT_PATTERNS,
-      ErrorPatterns.FRAME_PATTERNS,
-
-      // Dialog handling (common browser errors)
-      ErrorPatterns.DIALOG_PATTERNS,
-
-      // Network interception (browser context)
-      ErrorPatterns.INTERCEPT_PATTERNS,
-
-      // Tab and window management
-      ErrorPatterns.TAB_PATTERNS,
-      ErrorPatterns.WINDOW_PATTERNS,
-      ErrorPatterns.CONTEXT_PATTERNS,
-
-      // Mobile device emulation
-      ErrorPatterns.MOBILE_DEVICE_PATTERNS,
-
-      // Element and interaction errors
-      ErrorPatterns.ELEMENT_PATTERNS,
-      ErrorPatterns.LOCATOR_PATTERNS,
-      ErrorPatterns.SELECTOR_PATTERNS,
-      ErrorPatterns.ELEMENT_STATE_PATTERNS,
-
-      // Interaction errors
-      ErrorPatterns.KEYBOARD_PATTERNS,
-      ErrorPatterns.MOUSE_PATTERNS,
-      ErrorPatterns.DRAG_DROP_PATTERNS,
-      ErrorPatterns.HOVER_PATTERNS,
-      ErrorPatterns.GESTURE_PATTERNS,
-
-      // Wait conditions
-      ErrorPatterns.WAIT_CONDITION_PATTERNS,
-
-      // Viewport and scrolling
-      ErrorPatterns.SCROLL_PATTERNS,
-      ErrorPatterns.VIEWPORT_PATTERNS,
-
-      // File operations
-      ErrorPatterns.SCREENSHOT_PATTERNS,
-      ErrorPatterns.DOWNLOAD_PATTERNS,
-      ErrorPatterns.UPLOAD_PATTERNS,
-
-      // Storage and cookies
-      ErrorPatterns.COOKIE_PATTERNS,
-      ErrorPatterns.SESSION_PATTERNS,
-      ErrorPatterns.STORAGE_PATTERNS,
-
-      // Network errors
-      ErrorPatterns.NETWORK_PATTERNS,
-      ErrorPatterns.HTTP_CLIENT_PATTERNS,
-      ErrorPatterns.HTTP_SERVER_PATTERNS,
-      ErrorPatterns.CORS_PATTERNS,
-
-      // Authentication
-      ErrorPatterns.AUTHENTICATION_PATTERNS,
-      ErrorPatterns.AUTHORIZATION_PATTERNS,
-      ErrorPatterns.TOKEN_EXPIRED_PATTERNS,
-
-      // Security
-      ErrorPatterns.SECURITY_ERROR_PATTERNS,
-
-      // CSS and styling
-      ErrorPatterns.CSS_PATTERNS,
-      ErrorPatterns.STYLE_PATTERNS,
-
-      // Content verification
-      ErrorPatterns.TEXT_VERIFICATION_PATTERNS,
-      ErrorPatterns.CONTENT_MISMATCH_PATTERNS,
-
-      // JavaScript errors
-      ErrorPatterns.TYPE_ERROR_PATTERNS,
-      ErrorPatterns.REFERENCE_ERROR_PATTERNS,
-      ErrorPatterns.SYNTAX_ERROR_PATTERNS,
-      ErrorPatterns.RANGE_ERROR_PATTERNS,
-
-      // File system errors
-      ErrorPatterns.FILE_NOT_FOUND_PATTERNS,
-      ErrorPatterns.FILE_EXISTS_PATTERNS,
-      ErrorPatterns.ACCESS_DENIED_PATTERNS,
-      ErrorPatterns.FILE_TOO_LARGE_PATTERNS,
-
-      // Connection errors
-      ErrorPatterns.CONNECTION_PATTERNS,
-
-      // Conflict errors
-      ErrorPatterns.CONFLICT_PATTERNS,
-
-      // API version errors
-      ErrorPatterns.API_VERSION_ERROR_PATTERNS,
-
-      // Generic timeout (lower priority)
-      ErrorPatterns.TIMEOUT_PATTERNS,
-
-      // Test errors (lowest priority)
-      ErrorPatterns.TEST_PATTERNS,
-      ErrorPatterns.FIXTURE_PATTERNS,
-    ];
-
-    // Check each pattern group in priority order
-    for (const patternGroup of patternGroups) {
+    // Use the same cached pattern matching as other methods
+    for (const patternGroup of PRIORITIZED_PATTERN_GROUPS) {
       if (this.matchesPatternGroup(errorMessage, errorObj, patternGroup)) {
         return {
           category: patternGroup.category as ErrorCategory,
@@ -751,117 +429,163 @@ export default class ErrorProcessor {
       }
     }
 
-    // Default fallback
     return { category: ErrorCategory.UNKNOWN, context: "General Error" };
   }
 
-  /**
-   * Analyze HTTP/API errors with comprehensive status code handling
-   */
-  private static analyzeHttpError(error: unknown): { category: ErrorCategory; context: string } {
-    const errorMessage = this.getErrorMessage(error).toLowerCase();
+  // Updated categorizeError method - simplified and fixed logic
+  private static categorizeError(error: unknown): { category: ErrorCategory; context: string } {
+    // Fast path for JavaScript errors
+    if (error instanceof Error) {
+      const jsResult = JS_ERROR_MAP.get(error.name);
+      if (jsResult) return jsResult;
 
-    // Check for HTTP status code patterns
-    if (error && typeof error === "object") {
-      // Define proper types for different error structures
-      interface AxiosLikeError {
-        response?: {
-          status?: number;
+      // System errors with codes
+      if ("code" in error) {
+        const systemResult = SYSTEM_ERROR_MAP.get((error as Error & { code: string }).code);
+        if (systemResult) return systemResult;
+      }
+
+      // Custom/App errors
+      if (error instanceof CustomError) {
+        return {
+          category:
+            error.category in ErrorCategory
+              ? (error.category as ErrorCategory)
+              : ErrorCategory.UNKNOWN,
+          context: `App Error: ${(error.category as string) || "Unknown"}`,
         };
       }
+    }
 
-      interface StatusError {
-        status?: number;
-        statusCode?: number;
-      }
+    // Playwright errors
+    if (this.isPlaywrightError(error)) {
+      return this.analyzePlaywrightError(error);
+    }
 
-      // Type guard for Axios-style errors
-      function isAxiosLikeError(obj: object): obj is AxiosLikeError {
-        return (
-          "response" in obj &&
-          obj.response !== null &&
-          typeof obj.response === "object" &&
-          "status" in obj.response
-        );
-      }
+    // HTTP errors
+    const httpResult = this.analyzeHttpError(error);
+    if (httpResult.category !== ErrorCategory.UNKNOWN) {
+      return httpResult;
+    }
 
-      // Type guard for status errors
-      function isStatusError(obj: object): obj is StatusError {
-        return "status" in obj || "statusCode" in obj;
-      }
+    // Timeout check
+    if (this.isTimeoutError(error)) {
+      return { category: ErrorCategory.TIMEOUT, context: "Timeout Error" };
+    }
 
-      // Axios-style errors
-      if (isAxiosLikeError(error)) {
-        const status = error.response?.status;
-        if (typeof status === "number") {
-          if (status >= 400 && status < 500) {
-            // Handle specific 4xx errors
-            switch (status) {
-              case 401:
-                return {
-                  category: ErrorCategory.AUTHENTICATION,
-                  context: "Authentication Error (401)",
-                };
-              case 403:
-                return {
-                  category: ErrorCategory.AUTHORIZATION,
-                  context: "Authorization Error (403)",
-                };
-              case 404:
-                return { category: ErrorCategory.NOT_FOUND, context: "Not Found Error (404)" };
-              case 409:
-                return { category: ErrorCategory.CONFLICT, context: "Conflict Error (409)" };
-              case 429:
-                return { category: ErrorCategory.RATE_LIMIT, context: "Rate Limit Error (429)" };
-              default:
-                return { category: ErrorCategory.HTTP_CLIENT, context: `Client Error (${status})` };
+    // Message pattern analysis
+    const messageResult = this.analyzeErrorMessage(error);
+    if (messageResult.category !== ErrorCategory.UNKNOWN) {
+      return messageResult;
+    }
+
+    // Fallback
+    return {
+      category: ErrorCategory.UNKNOWN,
+      context: error instanceof Error && error.name ? `${error.name} Error` : "General Error",
+    };
+  }
+
+  // Updated analyzeErrorMessage method - use centralized pattern matching
+  private static analyzeErrorMessage(error: unknown): { category: ErrorCategory; context: string } {
+    const errorMessage = this.getErrorMessage(error).toLowerCase();
+
+    // Check cache first
+    const cacheKey = generateMatchCacheKey(errorMessage);
+    if (MATCH_RESULT_CACHE.has(cacheKey)) {
+      return MATCH_RESULT_CACHE.get(cacheKey)!;
+    }
+
+    // Use prioritized pattern groups for message analysis
+    for (const patternGroup of PRIORITIZED_PATTERN_GROUPS) {
+      for (const pattern of patternGroup.patterns) {
+        const cachedPattern = getCachedPattern(pattern.source);
+        if (cachedPattern.test(errorMessage)) {
+          const result = {
+            category: patternGroup.category as ErrorCategory,
+            context: patternGroup.context,
+          };
+
+          // Cache the result
+          if (MATCH_RESULT_CACHE.size >= MAX_MATCH_CACHE_SIZE) {
+            const firstKey = MATCH_RESULT_CACHE.keys().next().value;
+            if (firstKey !== undefined) {
+              MATCH_RESULT_CACHE.delete(firstKey);
             }
-          } else if (status >= 500) {
-            return { category: ErrorCategory.HTTP_SERVER, context: `Server Error (${status})` };
           }
-        }
-      }
+          MATCH_RESULT_CACHE.set(cacheKey, result);
 
-      // Check for status code in error properties
-      if (isStatusError(error)) {
-        const status = error.status ?? error.statusCode;
-        if (typeof status === "number") {
-          if (status >= 400 && status < 500) {
-            return { category: ErrorCategory.HTTP_CLIENT, context: `Client Error (${status})` };
-          } else if (status >= 500) {
-            return { category: ErrorCategory.HTTP_SERVER, context: `Server Error (${status})` };
-          }
+          return result;
         }
       }
     }
 
-    // CORS errors (common in web testing)
+    return { category: ErrorCategory.UNKNOWN, context: "General Error" };
+  }
+
+  private static analyzeHttpError(error: unknown): { category: ErrorCategory; context: string } {
+    if (!error || typeof error !== "object") {
+      return { category: ErrorCategory.UNKNOWN, context: "General Error" };
+    }
+
+    const errorObj = error as Record<string, unknown>;
+    const status = this.extractHttpStatus(errorObj);
+
+    if (typeof status === "number") {
+      const mapping = HTTP_STATUS_MAP.get(status);
+      if (mapping) return mapping;
+
+      return status >= 400 && status < 500
+        ? { category: ErrorCategory.HTTP_CLIENT, context: `Client Error (${status})` }
+        : { category: ErrorCategory.HTTP_SERVER, context: `Server Error (${status})` };
+    }
+
+    // Check for specific error types in message
+    const errorMessage = this.getErrorMessage(error).toLowerCase();
+    return this.categorizeErrorMessage(errorMessage);
+  }
+
+  // New helper method to extract HTTP status
+  private static extractHttpStatus(errorObj: Record<string, unknown>): number | undefined {
+    // Check for response.status first
     if (
-      errorMessage.includes("cors") ||
-      errorMessage.includes("cross-origin") ||
-      errorMessage.includes("access-control-allow-origin")
+      "response" in errorObj &&
+      errorObj.response &&
+      typeof errorObj.response === "object" &&
+      errorObj.response !== null
     ) {
+      const response = errorObj.response as Record<string, unknown>;
+      if ("status" in response && typeof response.status === "number") {
+        return response.status;
+      }
+    }
+
+    // Check for direct status property
+    if ("status" in errorObj && typeof errorObj.status === "number") {
+      return errorObj.status;
+    }
+
+    // Check for statusCode property
+    if ("statusCode" in errorObj && typeof errorObj.statusCode === "number") {
+      return errorObj.statusCode;
+    }
+
+    return undefined;
+  }
+
+  private static categorizeErrorMessage(errorMessage: string): {
+    category: ErrorCategory;
+    context: string;
+  } {
+    if (errorMessage.includes("cors") || errorMessage.includes("cross-origin")) {
       return { category: ErrorCategory.CORS, context: "CORS Error" };
     }
-
-    // Token/JWT errors
-    if (
-      errorMessage.includes("token expired") ||
-      errorMessage.includes("jwt expired") ||
-      errorMessage.includes("token invalid")
-    ) {
+    if (errorMessage.includes("token expired") || errorMessage.includes("jwt expired")) {
       return { category: ErrorCategory.TOKEN_EXPIRED, context: "Token Expired Error" };
     }
-
-    // API version errors
-    if (
-      errorMessage.includes("api version") ||
-      errorMessage.includes("version not supported") ||
-      errorMessage.includes("deprecated api")
-    ) {
+    if (errorMessage.includes("api version") || errorMessage.includes("version not supported")) {
       return { category: ErrorCategory.API_VERSION_ERROR, context: "API Version Error" };
     }
-
     return { category: ErrorCategory.UNKNOWN, context: "General Error" };
   }
 }

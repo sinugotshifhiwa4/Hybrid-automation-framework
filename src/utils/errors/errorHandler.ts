@@ -1,28 +1,40 @@
 import { ErrorCategory } from '../../config/coreTypes/errors/error-category.enum';
 import { ErrorDetails } from '../../config/coreTypes/errors/error-handler.types';
 import logger from '../logging/loggerManager';
-import ErrorProcessor from './errorProcessor1';
+import ErrorProcessor from './errorProcessor';
 
 export default class ErrorHandler {
   private static loggedErrors = new Set<string>();
 
+  /**
+   * Centralized error capture with better error extraction and logging.
+   * @param error - The error to log
+   * @param source - The source of the error (e.g. function name)
+   * @param context - Optional additional context for the error
+   * @returns void
+   */
   public static captureError(error: unknown, source: string, context?: string): void {
-    try {
-      const details = ErrorProcessor.createErrorDetails(error, source, context);
-      const cacheKey = ErrorProcessor.generateErrorCacheKey(details);
+  const startTime = Date.now(); // Start time for performance monitoring
+  try {
+    const details = ErrorProcessor.createErrorDetails(error, source, context);
+    const cacheKey = ErrorProcessor.generateErrorCacheKey(details);
 
-      // Skip if already logged this execution
-      if (this.loggedErrors.has(cacheKey)) {
-        return;
-      }
-
-      this.loggedErrors.add(cacheKey);
-      this.logStructuredError(details);
-      this.logAdditionalDetails(error, source);
-    } catch (loggingError) {
-      this.handleLoggingFailure(loggingError, source);
+    // Skip if already logged this execution
+    if (this.loggedErrors.has(cacheKey)) {
+      return;
     }
+
+    this.loggedErrors.add(cacheKey);
+    this.logStructuredError(details);
+    this.logAdditionalDetails(error, source);
+  } catch (loggingError) {
+    this.handleLoggingFailure(loggingError, source);
+  } finally {
+    const duration = Date.now() - startTime; // Calculate duration
+    logger.info(`Error capture duration: ${duration}ms`);
   }
+}
+
 
    public static logAndThrow(message: string, source: string): never {
     this.captureError(new Error(message), source);
