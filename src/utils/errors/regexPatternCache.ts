@@ -7,8 +7,8 @@ export const PATTERN_CACHE = new Map<string, RegExp>();
 export const MATCH_RESULT_CACHE = new Map<string, { category: ErrorCategory; context: string }>();
 
 // Cache size limits to prevent memory leaks
-export const MAX_PATTERN_CACHE_SIZE = 100;
-export const MAX_MATCH_CACHE_SIZE = 500;
+export const MAX_PATTERN_CACHE_SIZE = 1500;
+export const MAX_MATCH_CACHE_SIZE = 2500;
 
 export function getCachedPattern(patternSource: string): RegExp {
   if (PATTERN_CACHE.has(patternSource)) {

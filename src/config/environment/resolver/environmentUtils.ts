@@ -1,6 +1,6 @@
 import EnvironmentDetector from '../detector/detector';
 import { CryptoService } from '../../../cryptography/service/cryptoService';
-import SanitizationConfig from '../../../utils/sanitization/sanitizationConfig';
+import DataSanitizer from '../../../utils/sanitization/dataSanitizer';
 import { Credentials } from '../../coreTypes/auth/credentials.types';
 import { EnvironmentSecretKeys } from '../dotenv/constants';
 import { EnvironmentStage } from '../dotenv/types';
@@ -41,7 +41,7 @@ export class EnvironmentUtils {
       const shouldSanitize = EnvironmentDetector.isCI();
 
       if (typeof value === 'string') {
-        return shouldSanitize ? (SanitizationConfig.sanitizeString(value) as T) : value;
+        return shouldSanitize ? (DataSanitizer.sanitizeString(value) as T) : value;
       }
 
       return value;
@@ -97,7 +97,7 @@ export class EnvironmentUtils {
   /**
    * Get the appropriate secret key for the given environment
    */
-  public static getSecretKeyForEnvironment(environment: EnvironmentStage): string {
+  private static getSecretKeyForEnvironment(environment: EnvironmentStage): string {
     switch (environment) {
       case 'dev':
         return EnvironmentSecretKeys.DEV;
@@ -111,5 +111,13 @@ export class EnvironmentUtils {
           'getSecretKeyForEnvironment',
         );
     }
+  }
+
+   /**
+   * Get the secret key for the current environment (auto-detected)
+   */
+  public static getSecretKeyForCurrentEnvironment(): string {
+    const currentEnvironment = EnvironmentDetector.getCurrentStage();
+    return this.getSecretKeyForEnvironment(currentEnvironment);
   }
 }

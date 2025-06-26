@@ -3,6 +3,8 @@ import FileSystemManager from '../../fileSystem/fileSystemManager';
 import { AuthStorageConstants } from '../../../config/coreTypes/auth/authStorage.constants';
 import { FileEncoding } from '../../../config/coreTypes/configTypes/file-encoding.enum';
 import ErrorHandler from '../../errors/errorHandler';
+import path from 'path';
+import fs from 'fs';
 import logger from '../../logging/loggerManager';
 
 export default class AuthStorageManager {
@@ -49,30 +51,59 @@ export default class AuthStorageManager {
    * Also ensures the directory exists and optionally resets file to empty state
    * @param shouldResetFile Whether to reset the file to an empty state (default: false)
    */
-  public static async resolveAuthStateFilePath(shouldResetFile: boolean = false): Promise<string> {
-    try {
-      // First ensure the directory exists
-      await this.createAuthDirectoryIfNeeded();
+  // public static async resolveAuthStateFilePath(shouldResetFile: boolean = false): Promise<string> {
+  //   try {
+  //     // First ensure the directory exists
+  //     await this.createAuthDirectoryIfNeeded();
 
-      const fileName = AuthStorageManager.isCI
-        ? AuthStorageConstants.CI_AUTH_FILE
-        : AuthStorageConstants.LOCAL_AUTH_FILE;
-      const filePath = FileSystemManager.resolveFilePath(AuthStorageConstants.DIRECTORY, fileName);
+  //     const fileName = AuthStorageManager.isCI
+  //       ? AuthStorageConstants.CI_AUTH_FILE
+  //       : AuthStorageConstants.LOCAL_AUTH_FILE;
+  //     const filePath = FileSystemManager.resolveFilePath(AuthStorageConstants.DIRECTORY, fileName);
 
-      if (shouldResetFile) {
-        await this.initializeEmptyAuthStateFile();
-      }
+  //     if (shouldResetFile) {
+  //       await this.initializeEmptyAuthStateFile();
+  //     }
 
-      return filePath;
-    } catch (error) {
-      ErrorHandler.captureError(
-        error,
-        'resolveAuthStateFilePath',
-        `Failed to resolve auth state file path`,
-      );
-      throw error;
+  //     return filePath;
+  //   } catch (error) {
+  //     ErrorHandler.captureError(
+  //       error,
+  //       'resolveAuthStateFilePath',
+  //       `Failed to resolve auth state file path`,
+  //     );
+  //     throw error;
+  //   }
+  // }
+
+  public static resolveAuthStateFilePath(shouldResetFile: boolean = false): string {
+  try {
+    // First ensure the directory exists using fs.mkdirSync
+    const dirPath = path.join(process.cwd(), (AuthStorageConstants.DIRECTORY));
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
     }
+    
+    const fileName = AuthStorageManager.isCI
+      ? AuthStorageConstants.CI_AUTH_FILE
+      : AuthStorageConstants.LOCAL_AUTH_FILE;
+    const filePath = FileSystemManager.resolveFilePath(AuthStorageConstants.DIRECTORY, fileName);
+    
+    if (shouldResetFile) {
+      // Use fs.writeFileSync to initialize empty auth state
+      fs.writeFileSync(filePath, '{}', 'utf8');
+    }
+    
+    return filePath;
+  } catch (error) {
+    ErrorHandler.captureError(
+      error,
+      'resolveAuthStateFilePath',
+      `Failed to resolve auth state file path`,
+    );
+    throw error;
   }
+}
 
   /**
    * Deletes the auth state directory
