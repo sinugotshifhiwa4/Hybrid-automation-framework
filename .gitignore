@@ -9,8 +9,6 @@ node_modules/
 /downloads/
 /ortoni-report/
 /.auth/
-/.keyMetadata/
-package-lock.json
 results.trx
 results.xml
 
