@@ -47,6 +47,7 @@ export class LoginPage extends BasePage {
 
   public async fillUsernameInput(username: string): Promise<void> {
     await this.fillElement(this.usernameInput, username, 'Username');
+    
   }
 
   public async fillPasswordInput(password: string): Promise<void> {
@@ -58,15 +59,15 @@ export class LoginPage extends BasePage {
   }
 
   public async verifyCompanyLogoIsDisplayed(): Promise<void> {
-    await this.verifyElementState(this.companyLogo, 'visible', 'Company logo');
+    await this.assertElementState(this.companyLogo, 'visible', 'Company logo');
   }
 
   public async verifyLoginErrorIsDisplayed(): Promise<void> {
-    await this.verifyElementState(this.loginError, 'visible', 'Login error');
+    await this.assertElementState(this.loginError, 'visible', 'Login error');
   }
 
   public async verifyLoginErrorIsNotDisplayed(): Promise<void> {
-    await this.verifyElementState(this.loginError, 'hidden', 'Login error');
+    await this.assertElementState(this.loginError, 'hidden', 'Login error');
   }
 
   public async clickForgotPasswordLink(): Promise<void> {
@@ -115,7 +116,7 @@ export class LoginPage extends BasePage {
   }
 
   public async verifyResetPasswordContainerHeaderIsDisplayed(): Promise<void> {
-    await this.verifyElementState(
+    await this.assertElementState(
       this.resetPasswordContainerHeader,
       'visible',
       'Reset password container header',
@@ -131,7 +132,7 @@ export class LoginPage extends BasePage {
   }
 
   public async verifyResetPasswordSuccessMessageIsDisplayed(): Promise<void> {
-    await this.verifyElementState(
+    await this.assertElementState(
       this.resetPasswordSuccessMessage,
       'visible',
       'Reset password success message',

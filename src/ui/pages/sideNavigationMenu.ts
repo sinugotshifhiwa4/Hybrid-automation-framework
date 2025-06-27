@@ -43,11 +43,11 @@ export class SideNavigationMenu extends BasePage {
   }
 
   async verifyCollapseSidebarToggleIsVisible() {
-    await this.verifyElementState(this.collapseSidebarToggle, 'visible', 'Collapse sidebar toggle');
+    await this.assertElementState(this.collapseSidebarToggle, 'visible', 'Collapse sidebar toggle');
   }
 
   async verifyCollapseSidebarToggleHidden() {
-    await this.verifyElementState(this.collapseSidebarToggle, 'hidden', 'Collapse sidebar toggle');
+    await this.assertElementState(this.collapseSidebarToggle, 'hidden', 'Collapse sidebar toggle');
   }
 
   async clickCollapseSidebarToggle() {
@@ -59,11 +59,11 @@ export class SideNavigationMenu extends BasePage {
   }
 
   async verifyExpandSidebarToggleIsVisible() {
-    await this.verifyElementState(this.expandSidebarToggle, 'visible', 'Expand sidebar toggle');
+    await this.assertElementState(this.expandSidebarToggle, 'visible', 'Expand sidebar toggle');
   }
 
   async verifyExpandSidebarToggleIsHidden() {
-    await this.verifyElementState(this.expandSidebarToggle, 'hidden', 'Expand sidebar toggle');
+    await this.assertElementState(this.expandSidebarToggle, 'hidden', 'Expand sidebar toggle');
   }
 
   async clickExpandSidebarToggle() {
@@ -75,7 +75,7 @@ export class SideNavigationMenu extends BasePage {
   }
 
   async verifyCompanyLogoIsVisible() {
-    await this.verifyElementState(this.companyLogo, 'visible', 'Company Logo');
+    await this.assertElementState(this.companyLogo, 'visible', 'Company Logo');
   }
 
   async fillSearchInput(searchTerm: string) {
@@ -83,35 +83,35 @@ export class SideNavigationMenu extends BasePage {
   }
 
   async verifyAdminMenuIsVisible() {
-    await this.verifyElementState(this.adminMenu, 'visible', 'Admin menu');
+    await this.assertElementState(this.adminMenu, 'visible', 'Admin menu');
   }
 
   async verifyPimMenuIsVisible() {
-    await this.verifyElementState(this.pimMenu, 'visible', 'PIM menu');
+    await this.assertElementState(this.pimMenu, 'visible', 'PIM menu');
   }
 
   async verifyLeaveMenuIsVisible() {
-    await this.verifyElementState(this.leaveMenu, 'visible', 'Leave menu');
+    await this.assertElementState(this.leaveMenu, 'visible', 'Leave menu');
   }
 
   async verifyTimeMenuIsVisible() {
-    await this.verifyElementState(this.timeMenu, 'visible', 'Time menu');
+    await this.assertElementState(this.timeMenu, 'visible', 'Time menu');
   }
 
   async verifyRecruitmentMenuIsVisible() {
-    await this.verifyElementState(this.recruitmentMenu, 'visible', 'Recruitment menu');
+    await this.assertElementState(this.recruitmentMenu, 'visible', 'Recruitment menu');
   }
 
   async verifyMyInfoMenuIsVisible() {
-    await this.verifyElementState(this.myInfoMenu, 'visible', 'My info menu');
+    await this.assertElementState(this.myInfoMenu, 'visible', 'My info menu');
   }
 
   async verifyPerformanceMenuIsVisible() {
-    await this.verifyElementState(this.performanceMenu, 'visible', 'Performance menu');
+    await this.assertElementState(this.performanceMenu, 'visible', 'Performance menu');
   }
 
   async verifyDashboardMenuIsVisible() {
-    await this.verifyElementState(this.dashboardMenu, 'visible', 'Dashboard menu');
+    await this.assertElementState(this.dashboardMenu, 'visible', 'Dashboard menu');
   }
 
   async isDashboardMenuVisible() {
@@ -119,19 +119,19 @@ export class SideNavigationMenu extends BasePage {
   }
 
   async verifyDirectoryMenuIsVisible() {
-    await this.verifyElementState(this.directoryMenu, 'visible', 'Directory menu');
+    await this.assertElementState(this.directoryMenu, 'visible', 'Directory menu');
   }
 
   async verifyMaintenanceMenuIsVisible() {
-    await this.verifyElementState(this.maintenanceMenu, 'visible', 'Maintenance menu');
+    await this.assertElementState(this.maintenanceMenu, 'visible', 'Maintenance menu');
   }
 
   async verifyClaimsMenuIsVisible() {
-    await this.verifyElementState(this.claimsMenu, 'visible', 'Claims menu');
+    await this.assertElementState(this.claimsMenu, 'visible', 'Claims menu');
   }
 
   async verifyBuzzMenuIsVisible() {
-    await this.verifyElementState(this.buzzMenu, 'visible', 'Buzz menu');
+    await this.assertElementState(this.buzzMenu, 'visible', 'Buzz menu');
   }
 
   async verifySideMenusAreVisible() {

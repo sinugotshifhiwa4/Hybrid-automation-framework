@@ -73,7 +73,7 @@ export class TopNavigationMenu extends BasePage {
 
   async verifyUpgradeButtonIsVisible() {
     try {
-      await this.verifyElementState(this.upgradeButton, 'visible', 'Upgrade button');
+      await this.assertElementState(this.upgradeButton, 'visible', 'Upgrade button');
     } catch (error) {
       ErrorHandler.captureError(
         error,
@@ -141,7 +141,7 @@ export class TopNavigationMenu extends BasePage {
   // User profile
   async verifyUserProfileMenuIsVisible() {
     try {
-      await this.verifyElementState(this.userProfileMenu, 'visible', 'User profile menu');
+      await this.assertElementState(this.userProfileMenu, 'visible', 'User profile menu');
     } catch (error) {
       ErrorHandler.captureError(
         error,
@@ -163,7 +163,7 @@ export class TopNavigationMenu extends BasePage {
 
   async verifyUserProfileDropdownOptionAboutIsVisible() {
     try {
-      await this.verifyElementState(
+      await this.assertElementState(
         this.userProfileDropdownOptionAbout,
         'visible',
         'User profile dropdown option about',
@@ -196,7 +196,7 @@ export class TopNavigationMenu extends BasePage {
 
   async verifyUserProfileDropdownOptionSupportIsVisible() {
     try {
-      await this.verifyElementState(
+      await this.assertElementState(
         this.userProfileDropdownOptionSupport,
         'visible',
         'User profile dropdown option support',
@@ -229,7 +229,7 @@ export class TopNavigationMenu extends BasePage {
 
   async verifyUserProfileDropdownOptionChangePasswordIsVisible() {
     try {
-      await this.verifyElementState(
+      await this.assertElementState(
         this.userProfileDropdownOptionChangePassword,
         'visible',
         'User profile dropdown option change password',
@@ -271,7 +271,7 @@ export class TopNavigationMenu extends BasePage {
 
   async verifyLogoutButtonIsVisible() {
     try {
-      await this.verifyElementState(
+      await this.assertElementState(
         this.userProfileDropdownOptionLogout,
         'visible',
         'Logout button',
@@ -307,7 +307,7 @@ export class TopNavigationMenu extends BasePage {
 
   async verifyCompanyNameLabelIsVisible() {
     try {
-      await this.verifyElementState(this.companyNameLabel, 'visible', 'Company Name label');
+      await this.assertElementState(this.companyNameLabel, 'visible', 'Company Name label');
     } catch (error) {
       ErrorHandler.captureError(
         error,
@@ -351,7 +351,7 @@ export class TopNavigationMenu extends BasePage {
 
   async verifyVersionLabelIsVisible() {
     try {
-      await this.verifyElementState(this.versionLabel, 'visible', 'Version label');
+      await this.assertElementState(this.versionLabel, 'visible', 'Version label');
     } catch (error) {
       ErrorHandler.captureError(
         error,
@@ -395,7 +395,7 @@ export class TopNavigationMenu extends BasePage {
 
   async verifyActiveEmployeesLabelIsVisible() {
     try {
-      await this.verifyElementState(this.activeEmployeesLabel, 'visible', 'Active Employees label');
+      await this.assertElementState(this.activeEmployeesLabel, 'visible', 'Active Employees label');
     } catch (error) {
       ErrorHandler.captureError(
         error,
@@ -443,7 +443,7 @@ export class TopNavigationMenu extends BasePage {
 
   async verifyEmployeesTerminatedLabelIsVisible() {
     try {
-      await this.verifyElementState(
+      await this.assertElementState(
         this.employeesTerminatedLabel,
         'visible',
         'Employees Terminated label',
