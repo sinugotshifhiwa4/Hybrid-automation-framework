@@ -35,19 +35,19 @@ export class EnvironmentResolver {
     );
   }
 
-  public async getAdminCredentials(shouldDecrypt: boolean = true): Promise<Credentials> {
+  public async getAdminCredentials(): Promise<Credentials> {
     return EnvironmentUtils.getEnvironmentValue(
       () => this.fetchCIEnvironmentVariables.getAdminCredentials(),
-      () => this.FetchLocalEnvironmentVariables.getAdminCredentials(shouldDecrypt),
+      () => this.FetchLocalEnvironmentVariables.getAdminCredentials(),
       "getAdminCredentials",
       "Failed to get admin credentials",
     );
   }
 
-  public async getPortalCredentials(shouldDecrypt: boolean = true): Promise<Credentials> {
+  public async getPortalCredentials(): Promise<Credentials> {
     return EnvironmentUtils.getEnvironmentValue(
       () => this.fetchCIEnvironmentVariables.getPortalCredentials(),
-      () => this.FetchLocalEnvironmentVariables.getPortalCredentials(shouldDecrypt),
+      () => this.FetchLocalEnvironmentVariables.getPortalCredentials(),
       "getPortalCredentials",
       "Failed to get portal credentials",
     );
@@ -55,10 +55,10 @@ export class EnvironmentResolver {
 
   // Database
 
-  public async getDatabaseCredentials(shouldDecrypt: boolean = true): Promise<Credentials> {
+  public async getDatabaseCredentials(): Promise<Credentials> {
     return EnvironmentUtils.getEnvironmentValue(
       () => this.fetchCIEnvironmentVariables.getDatabaseCredentials(),
-      () => this.FetchLocalEnvironmentVariables.getDatabaseCredentials(shouldDecrypt),
+      () => this.FetchLocalEnvironmentVariables.getDatabaseCredentials(),
       "getDatabaseCredentials",
       "Failed to get database credentials",
     );

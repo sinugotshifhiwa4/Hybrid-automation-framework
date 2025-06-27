@@ -1,10 +1,10 @@
-import EnvironmentDetector from '../detector/detector';
-import { CryptoService } from '../../../cryptography/service/cryptoService';
-import DataSanitizer from '../../../utils/sanitization/dataSanitizer';
-import { Credentials } from '../../coreTypes/auth/credentials.types';
-import { EnvironmentSecretKeys } from '../dotenv/constants';
-import { EnvironmentStage } from '../dotenv/types';
-import ErrorHandler from '../../../utils/errors/errorHandler';
+import EnvironmentDetector from "../detector/detector";
+import { CryptoService } from "../../../cryptography/service/cryptoService";
+import DataSanitizer from "../../../utils/sanitization/dataSanitizer";
+import { Credentials } from "../../coreTypes/auth/credentials.types";
+import { EnvironmentSecretKeys } from "../dotenv/constants";
+import { EnvironmentStage } from "../dotenv/types";
+import ErrorHandler from "../../../utils/errors/errorHandler";
 
 export class EnvironmentUtils {
   /**
@@ -40,7 +40,7 @@ export class EnvironmentUtils {
 
       const shouldSanitize = EnvironmentDetector.isCI();
 
-      if (typeof value === 'string') {
+      if (typeof value === "string") {
         return shouldSanitize ? (DataSanitizer.sanitizeString(value) as T) : value;
       }
 
@@ -65,7 +65,7 @@ export class EnvironmentUtils {
         password: await CryptoService.decrypt(password, secretKey),
       };
     } catch (error) {
-      ErrorHandler.captureError(error, 'decryptCredentials', 'Failed to decrypt credentials');
+      ErrorHandler.captureError(error, "decryptCredentials", "Failed to decrypt credentials");
       throw error;
     }
   }
@@ -76,8 +76,8 @@ export class EnvironmentUtils {
   public static verifyCredentials(credentials: Credentials): void {
     if (!credentials.username || !credentials.password) {
       ErrorHandler.logAndThrow(
-        'Invalid credentials: Missing username or password.',
-        'FetchLocalEnvironmentVariables',
+        "Invalid credentials: Missing username or password.",
+        "FetchLocalEnvironmentVariables",
       );
     }
   }
@@ -86,10 +86,10 @@ export class EnvironmentUtils {
    * Validates that an environment variable is not empty
    */
   public static validateEnvironmentVariable(value: string, variableName: string): void {
-    if (!value || value.trim() === '') {
+    if (!value || value.trim() === "") {
       ErrorHandler.logAndThrow(
         `Environment variable ${variableName} is not set or is empty`,
-        'FetchLocalEnvironmentVariables',
+        "FetchLocalEnvironmentVariables",
       );
     }
   }
@@ -99,21 +99,21 @@ export class EnvironmentUtils {
    */
   private static getSecretKeyForEnvironment(environment: EnvironmentStage): string {
     switch (environment) {
-      case 'dev':
+      case "dev":
         return EnvironmentSecretKeys.DEV;
-      case 'uat':
+      case "uat":
         return EnvironmentSecretKeys.UAT;
-      case 'prod':
+      case "prod":
         return EnvironmentSecretKeys.PROD;
       default:
         ErrorHandler.logAndThrow(
           `Failed to select secret key. Invalid environment: ${environment}. Must be 'dev', 'uat', or 'prod'`,
-          'getSecretKeyForEnvironment',
+          "getSecretKeyForEnvironment",
         );
     }
   }
 
-   /**
+  /**
    * Get the secret key for the current environment (auto-detected)
    */
   public static getSecretKeyForCurrentEnvironment(): string {
