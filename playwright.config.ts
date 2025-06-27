@@ -7,12 +7,12 @@ import AuthStorageConstants from "./src/utils/auth/storage/authStorageManager";
 import os from "os";
 
 /**
-* Initialize configuration variables for Playwright test execution.
-* 
-* - isCI: Detects if running in CI environment to adjust behavior (headless mode, reporters, etc.)
-* - shouldSkipBrowserInit: Flag to bypass browser setup project for performance optimization
-* - authStorageFilePath: Resolves path to authentication state file for session persistence
-*/
+ * Initialize configuration variables for Playwright test execution.
+ *
+ * - isCI: Detects if running in CI environment to adjust behavior (headless mode, reporters, etc.)
+ * - shouldSkipBrowserInit: Flag to bypass browser setup project for performance optimization
+ * - authStorageFilePath: Resolves path to authentication state file for session persistence
+ */
 const isCI = EnvironmentDetector.isCI();
 const shouldSkipBrowserInit = BrowserInitFlag.shouldSkipBrowserInit();
 const authStorageFilePath = AuthStorageConstants.resolveAuthStateFilePath();
@@ -67,7 +67,10 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? undefined : Math.floor(os.cpus().length / 2),
+  workers: EnvironmentDetector.isShardingEnabled()
+    ? Math.max(1, Math.floor(os.cpus().length / parseInt(process.env.SHARD_TOTAL || "1")))
+    : Math.max(1, Math.floor(os.cpus().length / 2)),
+
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: isCI
     ? [["junit", { outputFile: "results.xml" }], ["dot"]]
@@ -90,6 +93,29 @@ export default defineConfig({
     video: isCI ? "on" : "retain-on-failure",
     screenshot: isCI ? "off" : "on",
     headless: isCI ? true : false,
+
+    launchOptions: {
+      args: isCI
+        ? [
+            // ESSENTIAL (Must have for CI stability)
+            "--no-sandbox", // Prevents permission failures in container
+            "--disable-dev-shm-usage", // Prevents memory crashes in Docker
+            "--disable-gpu", // Prevents GPU crashes in headless CI
+
+            // PERFORMANCE (Recommended for consistent test execution)
+            "--disable-background-timer-throttling", // Ensures consistent timing
+            "--disable-backgrounding-occluded-windows", // Maintains performance in headless
+            "--disable-renderer-backgrounding", // Keeps rendering at full speed
+
+            // STABILITY (Additional reliability)
+            "--disable-extensions", // Removes extension interference
+            "--disable-plugins", // Prevents plugin issues
+            "--no-first-run", // Skips first-run setup
+            "--disable-default-apps", // Removes default app prompts
+            "--disable-translate", // Prevents translation popups
+          ]
+        : [], // Clean environment for local development
+    },
   },
 
   /* Configure projects for major browsers */
