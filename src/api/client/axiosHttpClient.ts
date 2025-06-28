@@ -73,7 +73,7 @@ export class AxiosHttpClient {
           throw new Error(`Unsupported HTTP method: ${method}`);
       }
     } catch (error) {
-      return this.handleApiResponse(error, method, endpoint);
+      return this.handleAxiosErrorsOrThrow(error, method, endpoint);
     }
   }
 
@@ -111,16 +111,16 @@ export class AxiosHttpClient {
   }
 
   /**
-   * Handles Axios errors by capturing them with ApiErrorHandler and returning the response,
-   * and handles other errors by capturing them with ErrorHandler and rethrowing them.
+   * Handles Axios errors by capturing them and returning the error response,
+   * or throws non-Axios errors after capturing them.
    *
-   * @param error - The error to handle.
-   * @param method - The HTTP method used for the request.
-   * @param endpoint - The endpoint to which the request was sent.
-   *
-   * @throws The error if it is not an Axios error.
+   * @param error - The error to handle
+   * @param method - The HTTP method used for the request
+   * @param endpoint - The endpoint to which the request was sent
+   * @returns The Axios error response if it's an Axios error
+   * @throws The error if it is not an Axios error
    */
-  private handleApiResponse(error: unknown, method: string, endpoint: string) {
+  private handleAxiosErrorsOrThrow(error: unknown, method: string, endpoint: string) {
     if (axios.isAxiosError(error) && error.response) {
       ApiErrorHandler.captureError(
         error,

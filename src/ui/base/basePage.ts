@@ -156,6 +156,54 @@ export default class BasePage {
   }
 
   /**
+   * Verify current URL matches expected URL
+   * @param expectedUrl The expected URL to verify against
+   * @param options Verification options: exact match or contains check
+   */
+  public async verifyPageUrl(
+    expectedUrl: string,
+    options: { exact?: boolean; contains?: boolean } = { exact: true },
+  ): Promise<void> {
+    return this.performAction(
+      async () => {
+        const currentUrl = this.getCurrentUrl();
+        
+        if (options.contains) {
+          expect(currentUrl).toContain(expectedUrl);
+        } else if (options.exact) {
+          expect(currentUrl).toBe(expectedUrl);
+        }
+      },
+      `URL verification passed: ${expectedUrl}`,
+      `URL verification failed for: ${expectedUrl}`,
+    );
+  }
+
+  /**
+   * Verify page title matches expected title
+   * @param expectedTitle The expected title to verify against
+   * @param options Verification options: exact match or contains check
+   */
+  public async verifyPageTitle(
+    expectedTitle: string,
+    options: { exact?: boolean; contains?: boolean } = { exact: true },
+  ): Promise<void> {
+    return this.performAction(
+      async () => {
+        const currentTitle = await this.getPageTitle();
+        
+        if (options.contains) {
+          expect(currentTitle).toContain(expectedTitle);
+        } else if (options.exact) {
+          expect(currentTitle).toBe(expectedTitle);
+        }
+      },
+      `Title verification passed: ${expectedTitle}`,
+      `Title verification failed for: ${expectedTitle}`,
+    );
+  }
+
+  /**
    * Wait for URL to match pattern
    * @param pattern URL pattern (string or regex)
    * @param timeout Timeout in milliseconds

@@ -36,8 +36,6 @@ const reportConfig: OrtoniReportConfig = {
   chartType: "doughnut" as chartType,
   meta: {
     project: "Hybrid Automation Framework",
-    version: "1.0.0",
-    platform: "Windows",
     environment: process.env.ENV || "dev",
   },
 };
