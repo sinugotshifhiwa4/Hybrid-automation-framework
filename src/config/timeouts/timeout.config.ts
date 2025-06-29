@@ -31,6 +31,7 @@ export const TIMEOUTS = {
     transaction: timeout(30_000),
     migration: timeout(90_000),
     connection: timeout(10_000),
+    request: timeout(10_000),
     poolAcquisition: timeout(10_000),
     idle: timeout(10_000),
   },

@@ -1,3 +1,4 @@
+import EnvironmentDetector from "../detector/detector";
 import { FetchCIEnvironmentVariables } from "./fetch/fetchCIEnvironmentVariables";
 import { FetchLocalEnvironmentVariables } from "./fetch/fetchLocalEnvironmentVariables";
 import { EnvironmentUtils } from "./environmentUtils";
@@ -6,6 +7,8 @@ import { Credentials } from "../../coreTypes/auth/credentials.types";
 export class EnvironmentResolver {
   private fetchCIEnvironmentVariables: FetchCIEnvironmentVariables;
   private FetchLocalEnvironmentVariables: FetchLocalEnvironmentVariables;
+
+  private isCI = EnvironmentDetector.isCI();
 
   constructor(
     fetchCIEnvironmentVariables: FetchCIEnvironmentVariables,
@@ -91,12 +94,33 @@ export class EnvironmentResolver {
     );
   }
 
-  public async getAzureEndpoint(): Promise<string> {
-    return EnvironmentUtils.getEnvironmentValue(
-      () => this.fetchCIEnvironmentVariables.getAzureEndpoint(),
-      () => this.FetchLocalEnvironmentVariables.getAzureEndpoint(),
-      "getAzureEndpoint",
-      "Failed to get Azure endpoint",
-    );
+  // Azure methods - CI only, returns null for local environments
+  public async getAzureSubscriptionId(): Promise<string | null> {
+    // Check if running in CI environment
+    if (this.isCI) {
+      return this.fetchCIEnvironmentVariables.getAzureSubscriptionId();
+    }
+    return null; // Azure not needed for local development
+  }
+
+  public async getAzureTenantId(): Promise<string | null> {
+    if (this.isCI) {
+      return this.fetchCIEnvironmentVariables.getAzureTenantId();
+    }
+    return null;
+  }
+
+  public async getAzureClientId(): Promise<string | null> {
+    if (this.isCI) {
+      return this.fetchCIEnvironmentVariables.getAzureClientId();
+    }
+    return null;
+  }
+
+  public async getAzureClientSecret(): Promise<string | null> {
+    if (this.isCI) {
+      return this.fetchCIEnvironmentVariables.getAzureClientSecret();
+    }
+    return null;
   }
 }

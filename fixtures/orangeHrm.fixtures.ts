@@ -1,15 +1,21 @@
-import { test as baseTest } from '@playwright/test';
-import AuthStorageManager from '../src/utils/auth/storage/authStorageManager';
-import AsyncFileManager from '../src/utils/fileSystem/fileSystemManager';
-import AuthenticationFilter from '../src/utils/auth/authenticationFilter';
-import { FetchCIEnvironmentVariables } from '../src/config/environment/resolver/fetch/fetchCIEnvironmentVariables';
-import { FetchLocalEnvironmentVariables } from '../src/config/environment/resolver/fetch/fetchLocalEnvironmentVariables';
-import { EnvironmentResolver } from '../src/config/environment/resolver/environmentResolver';
-import { BrowserSessionManager } from '../src/utils/auth/state/browserSessionManager';
-import { TopNavigationMenu } from '../src/ui/pages/topNavigationMenu';
-import { SideNavigationMenu } from '../src/ui/pages/sideNavigationMenu';
-import { LoginPage } from '../src/ui/pages/loginPage';
-import logger from '../src/utils/logging/loggerManager';
+import { test as baseTest } from "@playwright/test";
+import AuthStorageManager from "../src/utils/auth/storage/authStorageManager";
+import AsyncFileManager from "../src/utils/fileSystem/fileSystemManager";
+import AuthenticationFilter from "../src/utils/auth/authenticationFilter";
+import { FetchCIEnvironmentVariables } from "../src/config/environment/resolver/fetch/fetchCIEnvironmentVariables";
+import { FetchLocalEnvironmentVariables } from "../src/config/environment/resolver/fetch/fetchLocalEnvironmentVariables";
+import { EnvironmentResolver } from "../src/config/environment/resolver/environmentResolver";
+import { BrowserSessionManager } from "../src/utils/auth/state/browserSessionManager";
+import { TopNavigationMenu } from "../src/ui/pages/topNavigationMenu";
+import { SideNavigationMenu } from "../src/ui/pages/sideNavigationMenu";
+import { LoginPage } from "../src/ui/pages/loginPage";
+import logger from "../src/utils/logging/loggerManager";
+
+import { DatabaseConfiguration } from "../src/db/config/databaseConfiguration";
+import { DatabaseConnection } from "../src/db/connection/databaseConnection";
+import { QueryExecutor } from "../src/db/query/queryExecutor";
+import { SecurityQueries } from "../src/db/query/securityQueries";
+import { SecurityService } from "../src/db/service/securityService";
 
 type customFixtures = {
   shouldSaveAuthState: boolean;
@@ -20,6 +26,12 @@ type customFixtures = {
   browserSessionManager: BrowserSessionManager;
   topNavigationMenu: TopNavigationMenu;
   sideNavigationMenu: SideNavigationMenu;
+
+  databaseConfiguration: DatabaseConfiguration;
+  databaseConnection: DatabaseConnection;
+  queryExecutor: QueryExecutor;
+  securityQueries: SecurityQueries;
+  securityService: SecurityService;
 };
 
 export const orangeHrmFixtures = baseTest.extend<customFixtures>({
@@ -50,16 +62,33 @@ export const orangeHrmFixtures = baseTest.extend<customFixtures>({
     await use(new SideNavigationMenu(page));
   },
 
+  databaseConfiguration: async ({ environmentResolver }, use) => {
+    await use(new DatabaseConfiguration(environmentResolver));
+  },
+  databaseConnection: async ({ databaseConfiguration }, use) => {
+    await use(new DatabaseConnection(databaseConfiguration));
+  },
+  queryExecutor: async ({}, use) => {
+    await use(new QueryExecutor());
+  },
+
+  securityQueries: async ({}, use) => {
+    await use(new SecurityQueries());
+  },
+  securityService: async ({ queryExecutor, databaseConnection, securityQueries }, use) => {
+    await use(new SecurityService(queryExecutor, databaseConnection, securityQueries));
+  },
+
   context: async ({ browser, shouldSaveAuthState }, use, testInfo) => {
     let storageState: string | undefined;
 
     // Use AuthenticationFilter to determine if auth should be skipped
     const shouldSkipAuth = AuthenticationFilter.shouldSkipAuthSetup(testInfo, [
-      'verify URL and title',
-      'Invalid Credentials',
-      'login footer details',
-      'reset password',
-      'forgot password',
+      "verify URL and title",
+      "Invalid Credentials",
+      "login footer details",
+      "reset password",
+      "forgot password",
     ]);
 
     if (shouldSaveAuthState && !shouldSkipAuth) {
