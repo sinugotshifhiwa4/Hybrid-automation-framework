@@ -99,13 +99,4 @@ export class FetchLocalEnvironmentVariables {
       "Failed to get local database port",
     );
   }
-
-  public async getAzureEndpoint(): Promise<string> {
-    return EnvironmentUtils.getEnvironmentVariable<string>(
-      () => ENV.AZURE_DB_ENDPOINT,
-      "localDatabaseAzureEndpoint",
-      "getAzureEndpoint",
-      "Failed to get local Azure endpoint",
-    );
-  }
 }

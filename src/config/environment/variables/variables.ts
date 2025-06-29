@@ -15,12 +15,12 @@ export default class EnvironmentVariables {
   public static readonly ADMIN_PASSWORD = process.env.ADMIN_PASSWORD!;
   public static readonly PORTAL_USERNAME = process.env.PORTAL_USERNAME!;
   public static readonly PORTAL_PASSWORD = process.env.PORTAL_PASSWORD!;
+    public static readonly DB_USERNAME = process.env.DB_USERNAME!;
+  public static readonly DB_PASSWORD = process.env.DB_PASSWORD!;
 
   // Database
   public static readonly DB_SERVER = process.env.DB_SERVER!;
   public static readonly DATABASE_NAME = process.env.DATABASE_NAME!;
-  public static readonly DB_USERNAME = process.env.DB_USERNAME!;
-  public static readonly DB_PASSWORD = process.env.DB_PASSWORD!;
   public static readonly DB_PORT = process.env.DB_PORT!;
   public static readonly AZURE_DB_ENDPOINT = process.env.AZURE_DB_ENDPOINT!;
 

@@ -1,7 +1,10 @@
+import { CIAzureCredentials } from "../../../db/types/dbConfig.types";
+
 export interface CIEnvironmentConfig {
   urls: ServiceUrls;
   users: UserCredentialsSet;
   database: DatabaseConfig;
+  azureCredentials: CIAzureCredentials;
 }
 
 export interface ServiceUrls {
@@ -24,5 +27,4 @@ export interface DatabaseConfig {
   server: string;
   name: string;
   port: number;
-  azureEndpoint: string;
 }

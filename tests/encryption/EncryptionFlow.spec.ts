@@ -23,7 +23,7 @@ test.describe.serial('Encryption Flow @full-encryption', () => {
       EnvironmentConstants.ENV_DIR,
       EnvironmentFilePaths.uat,
       EnvironmentSecretKeys.UAT,
-      [EnvironmentVariables.PORTAL_USERNAME, EnvironmentVariables.PORTAL_PASSWORD],
+      [EnvironmentVariables.PORTAL_USERNAME, EnvironmentVariables.PORTAL_PASSWORD, EnvironmentVariables.DB_USERNAME, EnvironmentVariables.DB_PASSWORD],
     );
 
     // Verify encryption
